@@ -1,0 +1,1 @@
+This folder contains documents helpful for understanding the project.

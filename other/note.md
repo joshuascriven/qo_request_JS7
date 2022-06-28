@@ -1,0 +1,1 @@
+This folder contains miscellaneous files created by the project script or helpful for understanding the project.

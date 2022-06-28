@@ -1,0 +1,1 @@
+This folder contains figures created by the project scripts.
