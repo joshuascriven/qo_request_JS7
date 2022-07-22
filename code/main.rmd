@@ -1,18 +1,11 @@
 ---
-title: "No Title"
+title: "Welcome90 Merging and"
 author: "Joshua Scriven"
-# output: html_notebook
-# editor_options: 
-#   chunk_output_type: inline
+date: Sys.Date()
+output: html_notebook
 editor_options: 
   chunk_output_type: console
 ---
-
-```{r}
-projname <- "qo_request_..."
-data_dir <- "../data/" # location of main input data
-```
-
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message=FALSE)
@@ -22,125 +15,165 @@ knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message=FALSE)
 source("https://raw.githubusercontent.com/joshuascriven/helper_functions/main/helper_functions.R")
 ```
 
-```{r message=FALSE, warning=FALSE, include=FALSE}
-packageloader(c(
-  "AICcmodavg"
-  ,"anytime"
-  ,"broom"
-  ,"dplyr"
-  ,"english"
-  ,"fastDummies"
-  ,"ggcorrplot"
-  ,"ggpubr"
-  ,"gtools"
-  ,"gtsummary"
-  ,"Hmisc"
-  ,"janitor"
-  ,"jtools"
-  ,"knitr"
-  ,"lmtest"
-  ,"lubridate"
-  ,"odbc"
-  ,"openxlsx"
-  ,"pampe"
-  ,"plm"
-  ,"qualtRics"
-  ,"RColorBrewer"
-  ,"readxl"
-  ,"reshape2"
-  ,"sandwich"
-  ,"scales"
-  ,"stargazer"
-  ,"stringr"
-  ,"tidyverse"
-  ,"tm"
-  ,"wesanderson"
-  ,"wordcloud"
-  ,"wordcloud2"
-  ))
-# BiocManager::install("AnnotationDbi")
+```{r, include=FALSE}
+# devtools::install_github('Mikata-Project/ggthemr')
+packageloader(c("openxlsx", "readxl", "tidyverse", "dplyr", "knitr", "stargazer", "gtsummary", "english", "scales", "ggpubr", "broom", "AICcmodavg", "lmtest", "sandwich", "reshape2","qualtRics","odbc","lubridate","stringr","Hmisc","anytime","wesanderson","wordcloud","wordcloud2","RColorBrewer","tm","fastDummies","jtools","ggcorrplot","pampe","plm","stringdist","rgeolocate","DBI","rstudioapi","ggthemr","janitor","ggpubr","stackoverflow","fuzzyjoin","gtools"))
+
 ```
 
-# Import common data
-```{r message=FALSE, warning=FALSE, include=FALSE}
-api_key <- read.table(filemaker("api_key","tsv"), header = TRUE)
+```{r data, warning=FALSE, cache=TRUE, include=FALSE}
+ggthemr("flat")
 
-# LOC CPI Data
-qualtrics_api_credentials(
-  api_key = getKey("qualtrics_api_key")
-  , base_url = getKey("qualtrics_base_url")
-  , install = TRUE,overwrite = T); readRenviron("~/.Renviron")
+# set data dir and project name
+data_dir <- "../data/"
+projname <- "qo_request_JS7"
+api_key <- read.table(filemaker("api_key","txt"))
 
-dat_cpi <- fetch_survey(
-  surveyID = all_surveys() %>% filter(isActive == TRUE, grepl("Tool - Child Protective Investigations$",name)) %>% pull(id)
-  , verbose = TRUE
-  , force_request = TRUE)
+outpath <- paste0(here() %>% str_remove(projname),"qo_requests_admin/out/",projname)
+ifelse(!dir.exists(file.path(outpath)), dir.create(file.path(outpath), recursive = TRUE), "Already exists")
+# 
+# imgpath <- paste0(dirname(getSourceEditorContext()$path),"/figures")
+# ifelse(!dir.exists(file.path(imgpath)), dir.create(file.path(imgpath), recursive = TRUE), "Already exists")
 
-# Smartsheet
+# main data file name
+# files <- c("New hire update May June July",
+#           "Rawdataexcel_orientation_26_08pull",
+#           "Rawdataexcel_2021-08-18_smartsheets")
+```
+
+# Survey History
+
+As of 29 June, 2022, W90 surveys have been conducted in some form on the following dates: 
+
+- August 18, 2021
+- September 22, 2021
+- October 20, 2021
+
+The single survey was split into distinct parts for these dates:
+
+- February 16, 2022
+- April 20, 2022
+
+The distinct surveys remain as such, but are presented in Qualtris in a single location:
+
+- June 20th, 2022
+
+## Merging
+Versions of the W90 surveys can be found on Formsite, Smartsheet, and Qualtrics. These must be merged.
+
+
+```{r data, warning=FALSE, cache=TRUE, include=FALSE}
 con <- dbConnect(odbc::odbc()
-                 , driver = "Smartsheet Live Data Connector"
-                 , database = "smartsheets"
-                 , uid = getKey("smartsheet_uid")
-                 , pwd = getKey("smartsheet_pwd")
+                 , driver="Smartsheet Live Data Connector"
+                 , database="smartsheets"
+                 , uid=api_key[4,]
+                 , pwd=api_key[5,]
                  , timeout = 10)
 
-# Conversion Tables
-## LOC CPI Columns
-tab_names_cpi <-getdb(con, "qualtrics_loc_cpi_rename_2022_04_24") %>% drop_na(name_new)
+survey_tables <- dbListTables(con)[str_detect (pattern = "^Archived_W90" , string =  dbListTables(con))]
 
-## Education Surveys
-### Formsite Columns
-
-### Smartsheet Columns
-
-### Qualtrics Columns
-
-## Admin Tables
-tab_ents <- getdb(con, "entity_table") %>% filter(TX_COUNTY  == "Data Not Available")
-
-
-
-```
-
-# Project-specific data
-```{r data, warning=FALSE, cache=TRUE, include=FALSE}
-dat <- read.xlsx(filemaker("..","xlsx"))# set name of worksheet
-
-
-```
-
-# Backup orig import with row identifiers and rename according columns
-```{r}
-# rename columns using tab_names_cpi
-data <- dat_cpi
-data$rec_idn <- seq(1,nrow(data),1)
-
-dictionary <- tibble::tibble(
-  new = tab_names_cpi$name_new,
-  old = tab_names_cpi$name_old
+surveys_names <- c(
+  # "Archived_W90 Rawdataexcel_2021-08-18__4665147349329796s_"
+  "Formsite_2021_08_18"
+  # ,"Archived_W90 Rawdataexcel_2021-09-22__6372001712498564s_"
+  ,"Formsite_2021_09_22"
+  # ,"Archived_W90 Rawdataexcel_2021-10-26__6864995238602628s_"
+  ,"Formsite_2021_10_26"
+  # ,"Archived_W90 Survey - Day 1__6508768839133060s_"
+  ,"Day_1"
+  # ,"Archived_W90 Survey - Day 30__5489883679614852s_"
+  ,"Day_30"
+  # ,"Archived_W90 Survey - Day 90__5929568071640964s_"
+  ,"Day_90"
+  # ,"Archived_W90 Survey - Recruitment & Hiring__1161467178313604s_"
+  ,"Rec_Hire"
+  # ,"Archived_W90 Survey - WW Event__3594660640778116s_"
+  ,"Event_Eval"
 )
 
-vars_found_in_dictionary <- intersect(names(data), unique(dictionary$old))
-temp_dict <- dictionary %>%
-  dplyr::filter(old %in% vars_found_in_dictionary) %>%
-  tibble::deframe()
-data <- data %>% dplyr::rename(!!temp_dict)
+surveys <- list()
+codebooks <- list()
 
-# create county data
-temp <- data %>% select(matches("county_|rec_idn")) %>% 
-  gather(type, county, -rec_idn) %>% 
-  na.omit() %>% 
-  select(-type) %>% 
-  arrange(rec_idn) %>% 
-  select(rec_idn,county)
-data <- merge(data,temp, by="rec_idn")
+for (s in seq_along(survey_tables)){
+  surveys[[surveys_names[s]]] <-  dbGetQuery(con,  sprintf("SELECT * FROM [%s]",survey_tables[s]))
+}
 
-# derive circuit variable from county, using dictionary
-data$circuit <- stringr::str_replace_all(data$county, setNames(tab_ents$TX_CIRCUIT, tab_ents$TX_COUNTY))
+for (s in seq_along(survey_tables)){
+  codebooks[[surveys_names[s]]] <-  scrivbook(data=surveys[[s]], mode="make:r", info_cols=c(
+    "XQID"
+    # ,"phase"
+    # ,"longitudinal"
+    ))
+}
 
-                 # , `Full.Name.(Supervisor)`!="** VACANT POSITION **") #this is not applicable. The vacancies apply to the supervisor position
 
-# There are multiple persons assigned to the same PSN6. Keep only the first.
-data_bac <- data
+s <- dbListTables(con)[str_detect (pattern = "W90 Surveys Codebook_questions" , string =  dbListTables(con))]
+survey_questions <-  dbGetQuery(con,  sprintf("SELECT * FROM [%s]",s)) %>% 
+  rename(name_old=col_name)
+
+questions <- list()
+
+for (q in getunique(survey_questions$phase)){
+  questions[[q]] <-  survey_questions %>% filter(phase==q)
+}
+
+surv_names <- mixedsort(names(surveys))
+surv_types <- split(x = surv_names, f = grepl("Form",surv_names))
+surv_texts <- mixedsort(names(questions))
+
+for (s in seq_along(surv_types[[1]])){
+  print(s)
+  temp <- stringdist_join(codebooks[[ surv_types[[1]][s] ]], questions[[ surv_texts[s] ]], 
+                                 by='name_old', #match based on team
+                                 mode='left', #use left join
+                                 method = "jw", #use jw distance metric
+                                 max_dist=1, 
+                                 distance_col='dist') %>%
+    group_by(name_old.x) %>%
+    slice_min(order_by=dist, n=1)
+  
+  codebooks[[ surv_types[[1]][s] ]] <- temp %>% 
+    mutate(description=question_text) %>% 
+    select(
+      qid
+      , name_old.x
+      , description
+      , name_new
+      , display_names
+      , display_names_short
+      , comments
+      , XQID
+      # , col_name
+      , phase
+      , longitudinal
+      # , question_text
+      , open_end
+    ) %>% 
+    rename(name_old=name_old.x)
+  
+    # codebooks[[ surv_types[[1]][s] ]]
+}
+
+cols_add <- setdiff(names(codebooks[[ surv_types[[1]][1] ]]),names(codebooks[[ surv_types[[2]][1] ]]))
+
+for (s in seq_along(surv_types[[2]])){
+  print(s)
+  temp <- codebooks[[ surv_types[[2]][s] ]]
+  temp[cols_add] <- NA
+  codebooks[[ surv_types[[2]][s] ]] <- temp %>%
+    mutate(phase=surv_types[[2]][s]
+           , description=name_old)
+  
+  # ["phase"] <- surv_types[[2]][s]
+}
+
+codebooks[["all_surveys"]] <- bind_rows(codebooks)
+codebooks[["all_surveys"]]["XQNUM"] <- 1:nrow(codebooks[["all_surveys"]])
+codebooks <- codebooks[c("all_surveys", surv_types[[1]], surv_types[[2]])]
+
+outfile <- paste0(outpath,"/archived_survey_questions.xlsx")
+write.xlsx(x = codebooks, file = outfile)
+browseURL(outfile)
+
+
 ```
-
